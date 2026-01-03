@@ -10,6 +10,8 @@ import (
 	"time"
 )
 
+const MaxGoroutines = 100
+
 type SearchResult struct {
 	Path string
 	Info os.FileInfo
@@ -58,10 +60,11 @@ func main() {
 
 	start := time.Now()
 	results := make(chan SearchResult, 100)
+	sem := make(chan struct{}, MaxGoroutines)
 	var wg sync.WaitGroup
 
 	wg.Add(1)
-	go walkDir(absPath, searchTerm, extension, ignoreList, results, &wg)
+	go walkDir(absPath, searchTerm, extension, ignoreList, results, &wg, sem)
 
 	go func() {
 		wg.Wait()
@@ -77,8 +80,11 @@ func main() {
 	fmt.Printf("\nFinished: %d files found in %v\n", count, time.Since(start))
 }
 
-func walkDir(dir string, term string, ext string, ignore []string, results chan<- SearchResult, wg *sync.WaitGroup) {
+func walkDir(dir string, term string, ext string, ignore []string, results chan<- SearchResult, wg *sync.WaitGroup, sem chan struct{}) {
 	defer wg.Done()
+
+	sem <- struct{}{}
+	defer func() { <-sem }()
 
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -102,7 +108,7 @@ func walkDir(dir string, term string, ext string, ignore []string, results chan<
 
 		if entry.IsDir() {
 			wg.Add(1)
-			go walkDir(fullPath, term, ext, ignore, results, wg)
+			go walkDir(fullPath, term, ext, ignore, results, wg, sem)
 		} else {
 			matchName := term == "" || strings.Contains(strings.ToLower(name), strings.ToLower(term))
 			matchExt := ext == "" || strings.HasSuffix(strings.ToLower(name), strings.ToLower(ext))
