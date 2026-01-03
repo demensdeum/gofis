@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -51,7 +52,7 @@ func main() {
 
 	if searchTerm == "" && extension == "" {
 		fmt.Println("Usage:")
-		fmt.Println("  go run main.go \"filename.ext\" \"searchPath\" [maxGoroutines]")
+		fmt.Println("  go run main.go \"regex_or_string\" \"searchPath\" [maxGoroutines]")
 		fmt.Println("  go run main.go -n <name> [-e <extension>] [-p <path>]")
 		return
 	}
@@ -62,8 +63,13 @@ func main() {
 		return
 	}
 
+	var re *regexp.Regexp
+	if searchTerm != "" {
+		re, _ = regexp.Compile("(?i)" + searchTerm)
+	}
+
 	ignoreList := strings.Split(*ignoreDirs, ",")
-	fmt.Printf("Searching for: '%s' in %s (Max Goroutines: %d)...\n\n", searchTerm, absPath, maxGoroutines)
+	fmt.Printf("Searching for: '%s' (Regex supported) in %s (Max Goroutines: %d)...\n\n", searchTerm, absPath, maxGoroutines)
 
 	start := time.Now()
 	results := make(chan SearchResult, 100)
@@ -71,7 +77,7 @@ func main() {
 	var wg sync.WaitGroup
 
 	wg.Add(1)
-	go walkDir(absPath, searchTerm, extension, ignoreList, results, &wg, sem)
+	go walkDir(absPath, searchTerm, re, extension, ignoreList, results, &wg, sem)
 
 	go func() {
 		wg.Wait()
@@ -87,7 +93,7 @@ func main() {
 	fmt.Printf("\nFinished: %d files found in %v\n", count, time.Since(start))
 }
 
-func walkDir(dir string, term string, ext string, ignore []string, results chan<- SearchResult, wg *sync.WaitGroup, sem chan struct{}) {
+func walkDir(dir string, term string, re *regexp.Regexp, ext string, ignore []string, results chan<- SearchResult, wg *sync.WaitGroup, sem chan struct{}) {
 	defer wg.Done()
 
 	sem <- struct{}{}
@@ -115,9 +121,17 @@ func walkDir(dir string, term string, ext string, ignore []string, results chan<
 
 		if entry.IsDir() {
 			wg.Add(1)
-			go walkDir(fullPath, term, ext, ignore, results, wg, sem)
+			go walkDir(fullPath, term, re, ext, ignore, results, wg, sem)
 		} else {
-			matchName := term == "" || strings.Contains(strings.ToLower(name), strings.ToLower(term))
+			matchName := false
+			if term == "" {
+				matchName = true
+			} else if re != nil {
+				matchName = re.MatchString(name)
+			} else {
+				matchName = strings.Contains(strings.ToLower(name), strings.ToLower(term))
+			}
+
 			matchExt := ext == "" || strings.HasSuffix(strings.ToLower(name), strings.ToLower(ext))
 
 			if matchName && matchExt {
