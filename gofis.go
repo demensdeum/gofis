@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 )
 
-const MaxGoroutines = 100
+const DefaultMaxGoroutines = 100
 
 type SearchResult struct {
 	Path string
@@ -27,6 +28,7 @@ func main() {
 	var searchTerm string
 	var startPath string
 	var extension string
+	maxGoroutines := DefaultMaxGoroutines
 
 	args := flag.Args()
 	if len(args) > 0 {
@@ -36,6 +38,11 @@ func main() {
 		} else {
 			startPath = *rootPathFlag
 		}
+		if len(args) > 2 {
+			if val, err := strconv.Atoi(args[2]); err == nil && val > 0 {
+				maxGoroutines = val
+			}
+		}
 	} else {
 		searchTerm = *searchTermFlag
 		startPath = *rootPathFlag
@@ -44,7 +51,7 @@ func main() {
 
 	if searchTerm == "" && extension == "" {
 		fmt.Println("Usage:")
-		fmt.Println("  go run main.go \"filename.ext\" \"searchPath\"")
+		fmt.Println("  go run main.go \"filename.ext\" \"searchPath\" [maxGoroutines]")
 		fmt.Println("  go run main.go -n <name> [-e <extension>] [-p <path>]")
 		return
 	}
@@ -56,11 +63,11 @@ func main() {
 	}
 
 	ignoreList := strings.Split(*ignoreDirs, ",")
-	fmt.Printf("Searching for: '%s' in %s...\n\n", searchTerm, absPath)
+	fmt.Printf("Searching for: '%s' in %s (Max Goroutines: %d)...\n\n", searchTerm, absPath, maxGoroutines)
 
 	start := time.Now()
 	results := make(chan SearchResult, 100)
-	sem := make(chan struct{}, MaxGoroutines)
+	sem := make(chan struct{}, maxGoroutines)
 	var wg sync.WaitGroup
 
 	wg.Add(1)
