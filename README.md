@@ -1,6 +1,6 @@
 # Gofis - Go File Search CLI Tool
 
-![gofis logo](gofis.jpg)
+![gofis logo](logo.jpg)
 
 **Gofis** is a lightweight, high-performance command-line utility built in Go for searching files across your system. It leverages Go's native concurrency model to walk directory trees rapidly, making it significantly faster than traditional single-threaded search tools.
 
