@@ -43,6 +43,18 @@ Gofis provides two ways to search: using flags or using positional arguments.
 ```
 Example: `./gofis "main" "./projects" 50`
 
+#### 3. Managing the Ignore List
+By default, Gofis skips common metadata and dependency folders to increase speed ("node_modules,.git,.svn,vendor"). You can override this using the `-i` flag.
+
+* **To customize the list:**
+  bash
+  ./gofis -n "main" -i "dist,temp,logs"
+  
+* **To disable the ignore list (Search ALL directories):**
+  Pass an empty string to the ignore flag.
+  bash
+  ./gofis -n "target_file" -i ""
+
 ---
 
 🔍 Regex Filename Search
