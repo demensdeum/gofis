@@ -43,6 +43,15 @@ Example: `./gofis "main" "./projects" 50`
 
 ---
 
+🔍 Regex Filename Search
+
+Gofis treats the search term as a Regular Expression (case-insensitive by default). This allows for much more powerful queries than simple string matching.
+
+```bash
+.\gofis.exe "^.*\.ini$" "D:\"
+```
+Note: When using special characters like |, *, or ( ) in your terminal, remember to wrap your search term in quotes (e.g., "^data_.*").
+
 ### ⚙️ How it Works
 
 Gofis uses a **Semaphore Pattern** to manage system resources. While it spawns a new goroutine for every subdirectory it encounters, it limits the number of active operations using a buffered channel (`sem`). This prevents the application from hitting "too many open files" errors or overwhelming the CPU.
